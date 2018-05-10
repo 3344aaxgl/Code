@@ -91,6 +91,14 @@ class BST
     }
 };
 
+//------------------------------------------------
+
+class EquipmentPiece {
+public:
+EquipmentPiece(int IDNumber):data(IDNumber){};
+private:
+  int data;
+};
 class BalanceBST : public BST
 {
   private:
@@ -111,6 +119,8 @@ void printBSTArray(ostream& os, BST bBSTArray[], int numElements)
      bBSTArray[i] << os;
     }
 }
+
+
 
 int main()
 {
@@ -207,6 +217,35 @@ int main()
     }
 
     BalanceBST bt[10];
-    printBSTArray(cout,bt,10);
+   // printBSTArray(cout,bt,10);
+  
+    int ID1, ID2, ID3, ID4,ID5,ID6,ID7,ID8,ID9, ID10; // 存储设备ID号的变量
+
+    EquipmentPiece bestPieces[] = { EquipmentPiece(ID1), 
+    EquipmentPiece(ID2),
+    EquipmentPiece(ID3),
+    EquipmentPiece(ID4),
+    EquipmentPiece(ID5),
+    EquipmentPiece(ID6),
+    EquipmentPiece(ID7),
+    EquipmentPiece(ID8),
+    EquipmentPiece(ID9),
+    EquipmentPiece(ID10)
+    };
+
+   EquipmentPiece* worstPrices[10];
+   for(int i = 0;i < 10; i++)
+       worstPrices[i] = new EquipmentPiece(i);
+   for(int i = 0;i < 10; i++)
+       delete worstPrices[i];
+
+    void * rawMemory = operator new(sizeof(EquipmentPiece) * 10);
+    EquipmentPiece* bestPieces1 = static_cast<EquipmentPiece*>(rawMemory);
+    for(int i = 0;i < 10; i++)
+       new(&bestPieces1[i]) EquipmentPiece(i);
+    for(int i = 0;i < 10; i++)
+       bestPieces1[i].~EquipmentPiece();
+    operator delete [](rawMemory);
+    
     return 0;
 }
