@@ -26,7 +26,6 @@ class BalanceBST : public BST
     BalanceBST() : value("hello"){};
     ostream &operator<<(ostream &os)
     {
-        //(dynamic_cast<BST&>(*this) << os) ;
         os << " BalanceBST.value: " << value<<'\n';
         return os;
     }
@@ -42,7 +41,6 @@ void printBSTArray(ostream& os, BST bBSTArray[], int numElements)
 int main()
 {
     BalanceBST bt[10];
-    //printBSTArray(cout,bt,10);
-    cout<<sizeof(BST)<<" "<<sizeof(int)<<" "<<sizeof(BalanceBST)<<endl;
+    printBSTArray(cout,bt,10);
     return 0;
 }
