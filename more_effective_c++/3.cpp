@@ -120,7 +120,28 @@ void printBSTArray(ostream& os, BST bBSTArray[], int numElements)
     }
 }
 
+template <typename T>
+class Array
+{
+    public:
+      Array(int s);
+      ~Array();
+    private:
+      int size;
+      T* data;
+};
 
+template <typename T>
+Array<T>::Array(int s):size(s)
+{
+    data = new T[size];
+}
+
+template <typename T>
+Array<T>::~Array()
+{
+    delete [] data;
+}
 
 int main()
 {
@@ -246,6 +267,9 @@ int main()
     for(int i = 0;i < 10; i++)
        bestPieces1[i].~EquipmentPiece();
     operator delete [](rawMemory);
+    
+    Array<int> arr(10); 
+
     
     return 0;
 }
