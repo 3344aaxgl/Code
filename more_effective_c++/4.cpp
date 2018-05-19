@@ -167,31 +167,10 @@ class alloc
 
 
 
-class T 
-{
-public:
-    T() 
-    { 
-        //throw E() ; 
-    }
-} ;
-
-void * operator new ( std::size_t, const A & )
-    {
-        void* nothing = 0;
-        std::cout << "Placement new called." << std::endl;
-        return nothing;
-    }
-void operator delete ( void *, const A & )
-    {
-        std::cout << "Placement delete called." << std::endl;
-    }
-
-
 
 int main()
 {
-/*     Rational r1(1,2);
+    Rational r1(1,2);
     cout<< r1;            //Rational没有重载<<运算符，但是可以隐式转换成double
     cout<< r1.asDouble();
 
@@ -203,29 +182,23 @@ int main()
    ui++;
    ++ui;
 
-   A c ;
-    //try {
-        T * p = new (c) T ;
-   // } catch (E exp) {std::cout << "Exception caught." << std::endl;}
-    cout<<&(*p)<<" "<<&a<<endl; */
 
-/*     alloc*p = new alloc(1);
+     alloc*p = new alloc(1);
     delete p;
 
     alloc* q = new alloc[5];
-    delete []q; */
+    delete []q;
 
     char *p = new char[sizeof(alloc)];
+    alloc *q;
     try
     {
-    alloc *q = new(p) alloc(1);
+       q = new(p) alloc(1);
     }
     catch(E e)
     {
         cout << "Exception caught." << std::endl;
     }
-
-
 
     return 0 ;
 }
