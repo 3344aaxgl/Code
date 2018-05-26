@@ -52,6 +52,42 @@ A NRVOTest(int i)
     return a;
 }
 
+class UPInt
+{
+public:
+  UPInt(int value):data(value)
+  {
+
+  }
+  friend const UPInt operator+(const UPInt& lhs, const UPInt& rhs);
+  friend const UPInt operator+(const UPInt& lhs, int rhs);
+  friend const UPInt operator+(int lhs, const UPInt& rhs);
+  friend ostream& operator<<(ostream&, const UPInt& rhs);
+private:
+  int data;
+};
+
+const UPInt operator+(const UPInt& lhs, const UPInt& rhs)
+{
+   return UPInt(lhs.data + rhs.data);
+}
+
+const UPInt operator+(const UPInt& lhs, int rhs)
+{
+   return UPInt(lhs.data + rhs);
+}
+
+const UPInt operator+(int lhs, const UPInt& rhs)
+{
+   return UPInt(lhs + rhs.data);
+}
+
+ostream& operator<<(ostream& os, const UPInt& rhs)
+{
+    os << rhs.data;
+    return os;
+}
+
 int main()
 {
     char arr[] = {"hello world"};
@@ -62,5 +98,10 @@ int main()
 
     A a = RVOTest(1);
     A b = NRVOTest(2);
+
+    UPInt u1(1);
+    UPInt u2(2);
+
+    cout<<u1 + u2<<" "<<u1+1<<" "<<2+u2<<endl;
     return 0;
 }
