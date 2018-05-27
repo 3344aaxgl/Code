@@ -172,8 +172,6 @@ T parallel_accumulate(Iterator first,Iterator last,T init)
     }
     accumulate_block<Iterator, T>()(block_start, last, results[num_threads-1]);
     for_each(threads.begin(),threads.end(),std::mem_fn(&std::thread::join));
-    for(int i = 0;i < num_threads; i++)
-       cout<< results[i]<<" ";
     return accumulate(results.begin(),results.end(),init);
 }
 
@@ -227,12 +225,10 @@ int main(int argc, char const *argv[])
         *iter = ++i;
     }
 
-    for(int i = 0; i<=103; i++)
-    {
-        cout<<v[i]<<" ";
-    }
     cout<<endl;
-    cout<<parallel_accumulate(v.begin(),v.end(),0);
+    cout<<parallel_accumulate(v.begin(),v.end(),0)<<endl;
+
+    cout<<"ppid:"<<std::this_thread::get_id()<<endl;
 
     return 0;
 }
