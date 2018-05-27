@@ -2,6 +2,8 @@
 #include <vector>
 #include <thread>
 #include <algorithm>
+#include <functional>
+#include <numeric>
 
 using namespace std;
 
