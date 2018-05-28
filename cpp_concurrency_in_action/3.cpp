@@ -123,6 +123,32 @@ public:
     }
 };
 
+class X
+{
+private:
+    int data;
+    std::mutex m;
+public:
+    X(int d):data(d)
+    {
+
+    }
+    friend void swap(X& lhs, X& rhs)
+    {
+        std::lock(lhs.m, rhs.m);
+        std::lock_guard<std::mutex> lock_a(lhs.m,std::adopt_lock);
+        std::lock_guard<std::mutex> lock_b(rhs.m,std::adopt_lock);
+
+        std::swap(lhs.data, rhs.data);
+    }
+};
+
+//层级互斥量
+class hierarchical_mutex
+{
+
+};
+
 int main()
 {
     std::vector<std::thread> threads(3);
