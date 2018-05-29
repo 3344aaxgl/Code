@@ -241,6 +241,62 @@ void process_data()
     std::unique_lock<std::mutex> lk(get_lock());
 }
 
+std::shared_ptr<some_data> resource_ptr;
+
+//双重检查锁机制实现单例模式
+void DCL_Singleton()
+{
+    if(!resource_ptr)
+    {
+        std::lock_guard<std::mutex> lk(some_mutex);
+        if(!resource_ptr)
+        {
+            resource_ptr.reset(new some_data);
+        }
+    }
+}
+
+//使用call_once进行初始化，保证只初始一次
+
+std::once_flag init_flag;
+
+void init_resource()
+{
+    resource_ptr.reset(new some_data);
+}
+
+void CALL_ONCE_init()
+{
+    std::call_once(init_flag, init_resource);
+}
+
+some_data &get_my_class_instance()
+{
+    static some_data instance; // 线程安全的初始化过程
+    return instance;
+}
+
+//使用shared_mutex和shared_lock(c++14起)
+class dns_entry;
+class dns_cache
+{
+private:
+    std::map<std::string, dns_entry> entries;
+    mutable boost::shared_mutex entry_mutex;
+public:
+    dns_entry find_entry(std::string const& domain)
+    {
+        boost::shared_lock<boost::shared_mutex> lk(entry_mutex);
+        std::map<std::string,dns_entry>::const_iterator const it= entries.find(domain);
+
+        return (it != entries.end() ? (*it).second:dns_entry()); 
+    }
+
+    void update_or_add_entry(std::string const domain,dns_entry const& dns_details)
+    {
+        entries[domain] = dns_details;
+    }
+};
 
 int main()
 {
