@@ -5,6 +5,7 @@
 #include <thread>
 #include <future>
 #include <numeric>
+#include <functional>
 
 
 std::mutex mu;
@@ -145,6 +146,30 @@ int parallel_sum(T beg,T end)
     return result + ft.get();
 }
 
+int add_func(int a,int b)
+{
+    return a + b;
+}
+
+void task_fun()
+{
+    //包装lambda表达式
+    std::packaged_task<int(int,int)> pa([](int a,int b)-> int {return a + b;});
+    std::future<int> ft = pa.get_future();
+    pa(1,2);
+    std::cout<<"lambda:"<<ft.get()<<'\n';
+
+    std::packaged_task<int()> pb(std::bind(add_func,1,2));
+    auto ft1 = pb.get_future();
+    pb();
+    std::cout<<"bind:"<<ft1.get()<<'\n';
+
+    std::packaged_task<int(int,int)> pc(add_func);
+    auto ft2 = pc.get_future();
+    std::thread t1(std::move(pc),1,4);
+    t1.join();
+    std::cout<<"thread:"<<ft2.get()<<'\n';
+}
 
 int main()
 {
@@ -157,6 +182,8 @@ int main()
 
     std::vector<int> v(1000,1);
     std::cout<<"parallel sum is: "<<parallel_sum(v.begin(),v.end())<<'\n';
+
+    task_fun();
 
     return 0;
 }
