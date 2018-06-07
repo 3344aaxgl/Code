@@ -5,6 +5,8 @@
 #include <thread>
 #include <future>
 #include <numeric>
+#include <functional>
+#include <chrono>
 
 
 std::mutex mu;
@@ -145,6 +147,106 @@ int parallel_sum(T beg,T end)
     return result + ft.get();
 }
 
+int add_func(int a,int b)
+{
+    return a + b;
+}
+
+void task_fun()
+{
+    //包装lambda表达式
+    std::packaged_task<int(int,int)> pa([](int a,int b)-> int {return a + b;});
+    std::future<int> ft = pa.get_future();
+    pa(1,2);
+    std::cout<<"lambda:"<<ft.get()<<'\n';
+
+    std::packaged_task<int()> pb(std::bind(add_func,1,2));
+    auto ft1 = pb.get_future();
+    pb();
+    std::cout<<"bind:"<<ft1.get()<<'\n';
+
+    std::packaged_task<int(int,int)> pc(add_func);
+    auto ft2 = pc.get_future();
+    std::thread t1(std::move(pc),1,4);
+    t1.join();
+    std::cout<<"thread:"<<ft2.get()<<'\n';
+}
+
+void promise_func()
+{
+    std::promise<int> p;
+    std::future<int> ft = p.get_future();
+    std::thread t([](std::promise<int>& p){p.set_value(1);},std::ref(p));
+    t.join();
+    std::cout<<"promise:"<<ft.get()<<'\n';
+}
+std::promise<double> p;
+auto lam = [](double d)-> double{if(d < 0){throw std::out_of_range("d<0");}return d;};
+auto plam = [](double d)-> double {if(d < 0){p.set_exception(std::current_exception());}return d;};
+
+void async_exception()
+{
+
+    std::future<double> ft = std::async(std::launch::async,lam,-1);
+    ft.get();
+}
+
+void packaged_task_exception()
+{
+    std::packaged_task<double(double)> pt(lam);
+    std::future<double> ft = pt.get_future();
+    std::thread t(std::move(pt),-1);
+    t.join();
+    ft.get();
+} 
+
+void promise_excettion()
+{
+    std::future<double> ft = p.get_future();
+    std::thread t(plam,-1);
+    t.join();
+    ft.get();
+}
+
+void shared_future_func()
+{
+    std::promise<void> ready_promise,t1_ready_promise,t2_ready_promise;
+    std::shared_future<void> ready_future(ready_promise.get_future());
+    std::chrono::time_point<std::chrono::high_resolution_clock> start;
+
+    auto fun1 = [&, ready_future]() -> std::chrono::duration<double, std::milli> 
+    {
+        t1_ready_promise.set_value();
+        ready_future.wait();
+        return std::chrono::high_resolution_clock::now() - start;
+    };
+
+    auto fun2 = [&, ready_future]() -> std::chrono::duration<double, std::milli> 
+    {
+        t2_ready_promise.set_value();
+        ready_future.wait();
+        return std::chrono::high_resolution_clock::now() - start;
+    };
+
+    auto result1 = std::async(std::launch::async, fun1);
+    auto result2 = std::async(std::launch::async, fun2);
+
+    //线程已经准备好
+    t1_ready_promise.get_future().wait();
+    t2_ready_promise.get_future().wait();
+
+    // 线程已就绪，开始时钟
+    start = std::chrono::high_resolution_clock::now();
+
+    //向线程发送信号，使之运行
+    ready_promise.set_value();
+
+    std::cout << "Thread 1 received the signal "
+              << result1.get().count() << " ms after start\n"
+              << "Thread 2 received the signal "
+              << result2.get().count() << " ms after start\n";
+
+}
 
 int main()
 {
@@ -157,6 +259,16 @@ int main()
 
     std::vector<int> v(1000,1);
     std::cout<<"parallel sum is: "<<parallel_sum(v.begin(),v.end())<<'\n';
+
+    task_fun();
+
+    promise_func();
+
+    //async_exception();
+
+    //packaged_task_exception();
+
+    shared_future_func();
 
     return 0;
 }
