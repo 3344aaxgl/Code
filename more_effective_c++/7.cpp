@@ -1,5 +1,6 @@
 #include <iostream>
 #include <list>
+#include <memory>
 
 using namespace std;
 
@@ -82,8 +83,136 @@ inline ostream& operator<<(ostream& s, const NLcomponent& c)
   return c.print(s);
 }
 
+class Printer
+{
+private:
+    Printer(){};
+    Printer(const Printer& rhs);
+public:
+    friend Printer& thePrinters();
+};
+
+Printer& thePrinters()//友元函数，可以调用私有成员
+{
+    static Printer p;//静态成员，只会初始化一次
+    return p;
+}
+
+class ThePrinter
+{
+private:
+    ThePrinter();
+    ThePrinter(const ThePrinter&);
+    class TooManyObjects{};
+    static size_t numObjects;
+    const static size_t maxObjects = 10;
+public:
+    static std::shared_ptr<ThePrinter> makeThePrinter();
+    static std::shared_ptr<ThePrinter> makeThePrinter(const ThePrinter& );
+};
+
+size_t ThePrinter::numObjects = 0;
+const size_t ThePrinter::maxObjects;
+
+ThePrinter::ThePrinter()
+{
+    if (numObjects >= maxObjects)
+    {
+        throw TooManyObjects();
+    }
+}
+
+ThePrinter::ThePrinter(const ThePrinter&)
+{
+    if (numObjects >= maxObjects)
+    {
+        throw TooManyObjects();
+    }
+}
+
+std::shared_ptr<ThePrinter> ThePrinter::makeThePrinter()
+{
+    return std::shared_ptr<ThePrinter>(new ThePrinter());
+}
+
+std::shared_ptr<ThePrinter> ThePrinter::makeThePrinter(const ThePrinter& p)
+{
+    return std::shared_ptr<ThePrinter>(new ThePrinter(p));
+}
+
+//具有计数功能的基类
+template<typename T>
+class Counted
+{
+public:
+    class TooManyObjects{};
+    static int objectCount(){return numObjects;};
+protected:
+    Counted();
+    Counted(const Counted&);
+    ~Counted(){--numObjects;};
+private:
+    void init();
+    static int numObjects;
+    const static size_t maxObjects ;
+};
+
+template<typename T>
+Counted<T>::Counted()
+{
+    init();
+}
+
+template<typename T>
+Counted<T>::Counted(const Counted<T>&)
+{
+    init();
+}
+
+template<typename T>
+void Counted<T>::init()
+{
+    if(numObjects > maxObjects)
+      throw TooManyObjects();
+    ++ numObjects;
+}
+
+class ThePrinters : private Counted<ThePrinters>
+{
+public:
+    // 伪构造函数
+    static std::shared_ptr<ThePrinters> makePrinters();
+    static std::shared_ptr<ThePrinters> makePrinters(const ThePrinters &rhs);
+    ~ThePrinters(){};
+    void submitJob(const ThePrinters &job);
+    void reset();
+    void performSelfTest();
+    using Counted<ThePrinters>::objectCount; // 参见下面解释
+    using Counted<ThePrinters>::TooManyObjects;  // 参见下面解释
+  private:
+    ThePrinters(){};
+    ThePrinters(const ThePrinters &rhs){};
+};
+
+template<>
+const size_t Counted<ThePrinters>::maxObjects = 10;
+
+template<>
+int Counted<ThePrinters>::numObjects = 10;
+
+std::shared_ptr<ThePrinters> ThePrinters::makePrinters()
+{
+    return std::shared_ptr<ThePrinters>(new ThePrinters());
+}
+
+std::shared_ptr<ThePrinters> ThePrinters::makePrinters(const ThePrinters& p)
+{
+    return std::shared_ptr<ThePrinters>(new ThePrinters(p));
+}
+
 int main()
 {
     NewsLetter nl(cin);
+
     return 0;
 }
