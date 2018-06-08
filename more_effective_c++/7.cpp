@@ -1,6 +1,7 @@
 #include <iostream>
 #include <list>
 #include <memory>
+#include <algorithm>
 
 using namespace std;
 
@@ -181,8 +182,8 @@ class ThePrinters : private Counted<ThePrinters>
 {
 public:
     // 伪构造函数
-    static std::shared_ptr<ThePrinters> makePrinters();
-    static std::shared_ptr<ThePrinters> makePrinters(const ThePrinters &rhs);
+    static std::shared_ptr<ThePrinters> makeThePrinters();
+    static std::shared_ptr<ThePrinters> makeThePrinters(const ThePrinters &rhs);
     ~ThePrinters(){};
     void submitJob(const ThePrinters &job);
     void reset();
@@ -198,21 +199,161 @@ template<>
 const size_t Counted<ThePrinters>::maxObjects = 10;
 
 template<>
-int Counted<ThePrinters>::numObjects = 10;
+int Counted<ThePrinters>::numObjects = 0;
 
-std::shared_ptr<ThePrinters> ThePrinters::makePrinters()
+std::shared_ptr<ThePrinters> ThePrinters::makeThePrinters()
 {
     return std::shared_ptr<ThePrinters>(new ThePrinters());
 }
 
-std::shared_ptr<ThePrinters> ThePrinters::makePrinters(const ThePrinters& p)
+std::shared_ptr<ThePrinters> ThePrinters::makeThePrinters(const ThePrinters& p)
 {
     return std::shared_ptr<ThePrinters>(new ThePrinters(p));
 }
 
+class UPNumber
+{
+public:
+    UPNumber(){};
+    UPNumber(const UPNumber&){};
+    void destroy()const{delete this;};
+private:
+    ~UPNumber(){}          //析构函数私有，保证无法将对象分配在栈上
+};
+
+class UPNumber1
+{
+public:
+    UPNumber1(){};
+    UPNumber1(const UPNumber1&){};
+    void destroy()const{delete this;};
+protected:
+    ~UPNumber1(){}          //析构函数保护，保证无法将对象分配在栈上，同时继承类也可以实现xiantogn
+};
+
+class NonNegativeUPNumber:public UPNumber1
+{
+
+};
+
+class Asset
+{
+public:
+    Asset();
+    ~Asset();
+private:
+    UPNumber *value;
+};
+Asset::Asset():value(new UPNumber()) // 正确
+{
+
+}
+Asset::~Asset()
+{
+    value->destroy();
+}
+
+class UPNumber2
+{
+public:
+    class HeapConstraintViolation {};
+    static void * operator new(size_t size);
+    UPNumber2();
+private:
+    static bool onTheHeap;
+};
+
+bool UPNumber2::onTheHeap = false;
+
+void* UPNumber2::operator new(size_t size)
+{
+    onTheHeap = true;
+
+    return ::operator new(size);
+}
+
+UPNumber2::UPNumber2()
+{
+    if(!onTheHeap)
+      throw HeapConstraintViolation();
+    else
+      onTheHeap = false;
+}
+
+class HeapTracked
+{
+public:
+    class MissingAddress{};
+    virtual ~HeapTracked() = 0;
+    static void* operator new(size_t size);
+    static void operator delete(void* ptr);
+    bool IsOnHeap() const;
+private:
+    typedef const void* RawAddress;
+    static std::list<RawAddress> address;  
+};
+
+HeapTracked::~HeapTracked(){}
+
+void* HeapTracked::operator new(size_t size)
+{
+    void *ptr = ::operator new(size);
+    address.push_back(ptr);
+    return ptr;
+}
+
+void HeapTracked::operator delete(void* ptr)
+{
+    list<RawAddress>::iterator it = find(address.begin(),address.end(),ptr);
+    if(it != address.end())
+    {
+        address.erase(it);
+        ::operator delete(ptr);
+    }
+    else
+    {
+        throw MissingAddress();
+    }
+}
+
+bool HeapTracked::IsOnHeap() const
+{
+    //指向或引用对象的最终导出类的指针
+    const void *rawAddress = dynamic_cast<const void *>(this);
+    // 在operator new返回的地址list中查到指针
+    list<RawAddress>::iterator it =
+        find(address.begin(), address.end(), rawAddress);
+    return it != address.end(); // 返回it是否被找到
+}
+
+list<HeapTracked::RawAddress> HeapTracked::address;
+
+class Assert:public HeapTracked
+{
+
+    
+};
+
 int main()
 {
-    NewsLetter nl(cin);
+    //NewsLetter nl(cin);
+
+    std::list<std::shared_ptr<ThePrinters>> l(11);
+
+    for(int i = 0; i< 11; i++)
+    {
+         l.push_back(ThePrinters::makeThePrinters());
+    }
+    cout<<ThePrinters::Counted<ThePrinters>::objectCount()<<'\n';
+
+    UPNumber *p = new UPNumber();
+    p->destroy();
+
+    NonNegativeUPNumber q;
+
+    Assert* as = new Assert();
+    cout<<as->IsOnHeap()<<'\n';
+    delete as;
 
     return 0;
 }
