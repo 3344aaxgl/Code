@@ -7,6 +7,10 @@
 #include <numeric>
 #include <functional>
 #include <chrono>
+#include <iomanip>
+#include <ctime>
+#include <algorithm>
+#include <list>
 
 
 std::mutex mu;
@@ -248,6 +252,56 @@ void shared_future_func()
 
 }
 
+bool done;
+
+bool wait_loop()
+{
+    std::unique_lock<std::mutex> lk(mu);
+    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(500);
+    while(!done)
+    {
+        if(data_cond.wait_until(lk,end) == std::cv_status::timeout);
+          break;
+    }
+    return done;
+}
+
+template<typename T>
+std::list<T> parallel_quicksort(std::list<T> input)
+{
+    if(input.empty())
+    {
+        return input;
+    }
+    std::list<T> result;
+    result.splice(result.begin(),input,input.begin());
+    T const& pivot = *result.begin();
+    auto divide_point = std::partition(input.begin(),input.end(),[&](T const& t){ return t < pivot;});
+
+    std::list<T> low_part;
+    low_part.splice(low_part.end(),input,input.begin(),divide_point);
+    //async的模板参数类型为&&，但是因为引用折叠，所以既可以传入左值，也可以传入右值
+    std::future<std::list<T>> fc(std::async(parallel_quicksort<T>,std::move(low_part)));
+
+    auto high_part(parallel_quicksort(std::move(input)));
+
+    result.splice(result.end(),high_part);
+    result.splice(result.begin(),fc.get());
+    return result;
+}
+
+template<typename F,typename A>
+std::future<std::result_of<F(A&&)>::type> spawn_task(F&& f,A&& a)
+{
+    typedef std::result_of<F(A&&)>::type result_type;
+    std::packaged_task<result_type(A&&)> task(std::move(f)); 
+    std::duture<result_type> fc = task.get_future();
+    std::thread t(std::move(task),std::move(a));
+    t.detach();
+    return fc;
+}
+
+
 int main()
 {
 
@@ -269,6 +323,17 @@ int main()
     //packaged_task_exception();
 
     shared_future_func();
+
+    std::chrono::seconds sec(1);
+    typedef std::chrono::duration<float,std::ratio<60,1>> mins; //这里不能用int
+    //无精度损失
+    std::cout<<"1 sec is "<<mins(sec).count()<<"min"<<'\n';
+    //有精度损失
+    std::cout<<"1 sec is "<<std::chrono::duration_cast<std::chrono::minutes>(sec).count()<<"min"<<'\n';
+
+    std::list<int> l{5,4,3,2,1,0};
+    for(int n:parallel_quicksort(l))
+       std::cout<<n<<' ';
 
     return 0;
 }
