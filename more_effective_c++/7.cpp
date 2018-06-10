@@ -334,6 +334,150 @@ class Assert:public HeapTracked
     
 };
 
+
+template<typename T>
+class my_auto_ptr
+{
+private:
+    T* pointee;
+public:
+    my_auto_ptr(T* p = 0):pointee(p){}
+
+    my_auto_ptr(my_auto_ptr&& mp):pointee(mp.pointee)//不能传入const，会对原有的对象进行更改,这里使用折叠引用
+    {
+        mp.pointee = 0;
+    }
+
+    my_auto_ptr& operator=(my_auto_ptr& mp)//不能传const，理由同上
+    {
+        if(this == &mp)
+           return *this;
+        delete pointee;
+        pointee = mp.pointee;
+        mp.pointee = 0;
+        return *this;
+    }
+
+    T& operator*() const//这里返回引用是因为pointee可能是指向继承类的指针，如果返回对象，则可能导致问题
+    {
+        return *pointee;
+    }
+
+    T* operator->() const
+    {
+        return pointee;
+    }
+
+    operator void*()
+    {
+        return static_cast<void*>(pointee);
+    }
+
+    operator !()
+    {
+        return (pointee == nullptr);
+    }
+
+/*     operator T *()
+    {
+        return pointee;
+    } */
+
+    template<typename Other>
+    operator my_auto_ptr<Other>()
+    {
+        //通过调用另一个模板类的构造函数来实现隐式转换
+        return my_auto_ptr<Other>(pointee);
+    }
+
+    ~my_auto_ptr()
+    {
+        delete pointee;
+    }
+};
+
+template<typename T>
+void printTreeNode(ostream &s, my_auto_ptr<T>& p)//只能传引用，因为拷贝构造函数会对对象进行改动
+{
+    s << *p;
+}
+
+/* class TupleAccessors {
+public:
+TupleAccessors(const int *pt);
+
+};
+
+TupleAccessors merged(const TupleAccessors& ta1,const TupleAccessors& ta2)
+{
+
+} */
+
+class Base
+{
+public:
+    Base()
+    {
+        cout<<"Base constructor"<<'\n';
+    }
+};
+
+class Derived:public Base
+{
+public:
+    Derived()
+    {
+
+    }
+    Derived(const Derived& d)
+    {
+
+    }
+};
+
+class DerivedDerived:public Derived
+{
+
+};
+
+void displayAndPlay(const Base* b)
+{
+    cout<<"Base"<<endl;
+}
+
+void displayAndPlay(const Derived*)
+{
+    cout<<"derived"<<endl;
+}
+
+void displayAndPlay(const my_auto_ptr<Base>& mb)
+{
+
+}
+
+void displayAndPlay(const my_auto_ptr<Derived>& md)
+{
+
+}
+
+template <class T> // 指向const对象的
+class SmartPtrToConst
+{ // 灵巧指针
+    // 成员函数
+  protected:
+    union 
+    {
+        const T *constPointee; // 让 SmartPtrToConst 访问
+        T *pointee;            // 让 SmartPtr 访问
+    };
+};
+template <class T> // 指向non-const对象
+class SmartPtr : public SmartPtrToConst<T>
+{
+public:
+    SmartPtr(T* p){SmartPtrToConst<T>::pointee = p;}
+};
+
 int main()
 {
     //NewsLetter nl(cin);
@@ -354,6 +498,51 @@ int main()
     Assert* as = new Assert();
     cout<<as->IsOnHeap()<<'\n';
     delete as;
+
+    my_auto_ptr<int> mp ;
+    if(!mp)
+      cout<<"mp is nullptr"<<endl;
+
+    if(mp);
+
+    if(!mp);
+
+    my_auto_ptr<double> md;
+    if(mp == md);
+
+    if(!mp == !md); 
+
+/*     my_auto_ptr<int> mi;
+
+    merged(mp,mi);  */ 
+
+    my_auto_ptr<Derived> mpd;
+
+    //这里经过RVO，只会调用默认构造函数，但在编译的时候会检查是否符合拷贝构造函数，
+    //如果拷贝构造函数入参是左引用，但实际传入的是个右值，则不匹配。所以利用引用折叠，将入参改为右值引用
+    //这样既可以支持左值，也可以支持右值
+
+    my_auto_ptr<Base> mb = mpd;
+
+    my_auto_ptr<DerivedDerived> mdd;
+   // displayAndPlay(mdd);
+
+    DerivedDerived* dd;
+
+    displayAndPlay(dd);
+
+    Base pb;
+
+    my_auto_ptr<Base> mp1 ;                        //non-const对象，non-const指针
+    my_auto_ptr<const Base> mp2;                   //const对象，non-const指针
+    const my_auto_ptr<Base> mp3 = &pb;             //non-const对象，const指针
+    const my_auto_ptr<const Base> mp4 = &pb;       //const对象，const指针
+
+
+
+
+    SmartPtr<int> pCD = new int();
+    SmartPtrToConst<int> pConstCD = pCD; // 正确
 
     return 0;
 }
