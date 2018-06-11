@@ -2,6 +2,7 @@
 #include <list>
 #include <memory>
 #include <algorithm>
+#include <string.h>
 
 using namespace std;
 
@@ -478,6 +479,72 @@ public:
     SmartPtr(T* p){SmartPtrToConst<T>::pointee = p;}
 };
 
+class my_string
+{
+private:
+    struct stringvalue
+    {
+        char* data;
+        int refCount;
+        stringvalue(const char* initvalue = "");
+        ~stringvalue();
+    };
+    stringvalue* value;
+public:
+    my_string(const char* initvalue = ""):value(new stringvalue(initvalue))
+    {
+        ++value->refCount;
+    }
+    
+    ~my_string()
+    {
+        if (--value->refCount == 0)
+            delete value;
+    }
+
+    my_string(const my_string& ms):value(ms.value)
+    {
+         ++value->refCount;
+    }
+
+    my_string& operator=(const my_string& ms)
+    {
+        if(this == &ms)
+            return *this;
+        if(--value->refCount == 0)
+            delete value;
+        value = ms.value;
+        ++value->refCount;
+        return *this;
+    }
+
+    const char& operator[](int index) const
+    {
+        return value->data[index];
+    }
+
+    char& operator[](int index)
+    {
+        if(value->refCount > 1)
+        {
+            --value->refCount;
+            value = new stringvalue(value->data);
+        }
+        return value->data[index];
+    }
+}; 
+
+my_string::stringvalue::stringvalue(const char* initvalue)
+{
+    data = new char[strlen(initvalue)+1];
+    strcpy(data,initvalue);
+}
+
+my_string::stringvalue::~stringvalue()
+{
+    delete [] data;
+}
+
 int main()
 {
     //NewsLetter nl(cin);
@@ -538,11 +605,12 @@ int main()
     const my_auto_ptr<Base> mp3 = &pb;             //non-const对象，const指针
     const my_auto_ptr<const Base> mp4 = &pb;       //const对象，const指针
 
-
-
-
     SmartPtr<int> pCD = new int();
     SmartPtrToConst<int> pConstCD = pCD; // 正确
+
+    my_string ms("hello world"),ms1;
+    ms1 = ms;
+    
 
     return 0;
 }
