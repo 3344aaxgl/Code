@@ -790,6 +790,28 @@ T &RCIPtr<T>::operator*() // access; do the
     return *(counter->pointee);
 } // COW thing
 
+class Widget
+{
+  public:
+    Widget(int size);
+    Widget(const Widget &rhs);
+    ~Widget();
+    Widget &operator=(const Widget &rhs);
+    void doThis();
+    int showThat() const;
+};
+
+class RCWidget
+{
+  public:
+    RCWidget(int size) : value(new Widget(size)) {}
+    void doThis() { value->doThis(); }
+    int showThat() const { return value->showThat(); }
+
+  private:
+    RCIPtr<Widget> value;
+};
+
 int main()
 {
     //NewsLetter nl(cin);
