@@ -4,6 +4,7 @@
 #include <vector>
 #include <cassert>
 #include <string>
+#include <queue>
 
 class spinclock_mutex
 {
@@ -290,6 +291,64 @@ void use_x()
     assert(a.load(std::memory_order_relaxed) == 99);    
 }
 
+std::vector<int> queue_data;
+std::atomic<int> count;
+
+void populate_queue()
+{
+    unsigned const num_of_items = 20;
+    queue_data.clear();
+    for(int i = 0;i < num_of_items; i++)
+      queue_data.push_back(i);
+    
+    count.store(num_of_items, std::memory_order_release);
+}
+
+void consume_queue_items(int n)
+{
+    while(true)
+    {
+        int item_index;
+        if((item_index = count.fetch_sub(1,std::memory_order_acquire)) <= 0)
+          break;
+        std::cout<<"thread "<<n<<":"<<queue_data[item_index-1]<<'\n';
+    }
+}
+
+void write_x_then_y_fence()
+{
+    x.store(true,std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_release);
+    y.store(true, std::memory_order_relaxed);
+}
+
+void read_y_then_x_fence()
+{
+    while(!(y.load(std::memory_order_relaxed)))
+      ;
+    std::atomic_thread_fence(std::memory_order_acquire);
+    if(x.load(std::memory_order_relaxed))
+      ++z;
+}
+
+bool x_fence = false; // x现在是一个非原子变量
+void write_x_then_y_notatomic()
+{
+    x_fence = true; // 1 在栅栏前存储x
+    std::atomic_thread_fence(std::memory_order_release);
+    y.store(true, std::memory_order_relaxed); // 2 在栅栏后存储y
+}
+
+void read_y_then_x_notatomic()
+{
+    while (!y.load(std::memory_order_relaxed))
+        ; // 3 在#2写入前，持续等待
+    std::atomic_thread_fence(std::memory_order_acquire);
+    if (x) // 4 这里读取到的值，是#1中写入
+        ++z;
+}
+
+
 int main()
 {
     test_spinlock();
@@ -394,6 +453,35 @@ int main()
     t20.join();
     t21.join();
     t22.join();
+
+    std::thread t23(populate_queue);
+    std::thread t24(consume_queue_items,1);
+    std::thread t25(consume_queue_items,2);
+
+    t23.join();
+    t24.join();
+    t25.join();
+
+    x = false;
+    y = false;
+    z = 0;
+
+    std::thread t26(write_x_then_y_fence);
+    std::thread t27(read_y_then_x_fence);
+
+    t26.join();
+    t27.join();
+
+    assert(z != 0);
+
+    x_fence = false;
+    y = false;
+    z = 0;
+    std::thread t28(write_x_then_y_notatomic);
+    std::thread t29(read_y_then_x_notatomic);
+    t28.join();
+    t29.join();
+    assert(z.load() != 0); // 5 断言将不会触发
 
     return 0;
 }
