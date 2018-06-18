@@ -718,13 +718,13 @@ class RCIPtr
 template <class T>
 void RCIPtr<T>::init()
 {
-    if (counter->isShareable() == false)
+    if (counter->Isshareable() == false)
     {
         T *oldValue = counter->pointee;
         counter = new CountHolder;
         counter->pointee = new T(*oldValue);
     }
-    counter->addReference();
+    counter->addreference();
 }
 template <class T>
 RCIPtr<T>::RCIPtr(T *realPtr)
@@ -742,14 +742,14 @@ RCIPtr<T>::RCIPtr(const RCIPtr &rhs)
 template <class T>
 RCIPtr<T>::~RCIPtr()
 {
-    counter->removeReference();
+    counter->removereference();
 }
 template <class T>
 RCIPtr<T> &RCIPtr<T>::operator=(const RCIPtr &rhs)
 {
     if (counter != rhs.counter)
     {
-        counter->removeReference();
+        counter->removereference();
         counter = rhs.counter;
         init();
     }
@@ -758,13 +758,13 @@ RCIPtr<T> &RCIPtr<T>::operator=(const RCIPtr &rhs)
 template <class T>         // implement the copy
 void RCIPtr<T>::makeCopy() // part of copy-on-
 {                          // write (COW)
-    if (counter->isShared())
+    if (counter->Isshared())
     {
         T *oldValue = counter->pointee;
-        counter->removeReference();
+        counter->removereference();
         counter = new CountHolder;
         counter->pointee = new T(*oldValue);
-        counter->addReference();
+        counter->addreference();
     }
 }
 template <class T>                     // const access;
@@ -810,6 +810,126 @@ class RCWidget
 
   private:
     RCIPtr<Widget> value;
+};
+
+template <typename T>
+class Array2D
+{
+  public:
+    class Array1D
+    {
+      public:
+        const T& operator[](int index) const
+        {
+            return *(t+index);
+        }
+
+        T& operator[](int index)
+        {
+            return *(t+index);
+        }
+
+        Array1D(int s = 0):size(s),t(nullptr)
+        {
+            if(s != 0)
+              t = new T[size];
+        }
+
+        ~Array1D()
+        {
+            if(t)
+              delete [] t;
+        }
+
+      private:
+        int size;
+        T* t;
+    };
+
+    const Array1D& operator[](int index) const
+    {
+        return *(*(a+index));
+    }
+
+    Array1D& operator[](int index)
+    {
+        return *(*(a+index));
+    } 
+
+    Array2D(int row ,int col):size(row)
+    {
+        a = new Array1D*[size];
+        for(int i = 0;i < size; i++)
+          a[i] = new Array1D(col);
+    }
+
+    ~Array2D()
+    {
+        for(int i = 0;i < size; i++)
+          delete a[i];
+        delete [] a;
+    }
+
+    private:
+      Array1D** a;
+      int size;
+};
+
+class String
+{
+  public:
+    String(const char* s)
+    {
+        len = strlen(s) +1;
+        str = new char[len];
+        strcpy(str,s);
+    }
+    
+    ~String()
+    {
+        len = 0;
+        delete []str;
+    }
+    class CharProxy
+    {
+      public:
+        CharProxy(String& str,int num):string(str),index(num)
+        {
+
+        }
+
+        CharProxy& operator=(const CharProxy& rhs)
+        {
+          string.str[index] = rhs.string.str[rhs.index];
+        }
+
+        CharProxy& operator=(char c)
+        {
+            string.str[index] = c;
+        }
+
+        operator char()
+        {
+            return string.str[index];
+        }
+      private:
+        String& string;
+        int index;
+    };
+
+    const CharProxy operator[](int in) const
+    {
+        return (CharProxy(const_cast<String&>(*this), in));
+    }
+
+    CharProxy operator[](int in)
+    {
+        return (CharProxy(*this,in));
+    }
+    friend class CharProxy;
+  private:
+    char* str;
+    unsigned int len;
 };
 
 int main()
@@ -878,6 +998,16 @@ int main()
     my_string ms("hello world"),ms1;
     ms1 = ms;
     
+    Array2D<int> a(5,10);
+    a[0][0] = 11;
+    cout<<"a[0][0] = "<<a[0][0]<<endl;
 
+    String str("hello");
+    String str1("world");
+
+    cout<< str[0]<<endl;
+    str[1] = 'w';
+    str[2] = str1[3];
+    cout<<str[1]<<' '<<str[2]<<endl;
     return 0;
 }
