@@ -3,6 +3,8 @@
 #include <memory>
 #include <algorithm>
 #include <string.h>
+#include <typeinfo>
+#include <map>
 
 using namespace std;
 
@@ -931,6 +933,233 @@ class String
     char* str;
     unsigned int len;
 };
+
+class GameObject
+{
+  public:
+    virtual void collide(GameObject& otherObject) = 0;
+};
+
+class CollisionWithUnknownObject
+{
+  public:
+    CollisionWithUnknownObject(GameObject &whatWeHit)
+    {
+
+    }
+};
+
+
+class SpaceStation;
+class Asteroid;
+
+class SpaceShip : public GameObject
+{
+  public:
+    virtual void collide(GameObject &otherObject);
+};
+
+class SpaceStation : public GameObject
+{
+  public:
+    virtual void collide(GameObject &otherObject);
+};
+
+class Asteroid : public GameObject
+{
+  public:
+    virtual void collide(GameObject &otherObject);
+};
+
+void SpaceShip::collide(GameObject &otherObject)
+{
+    const type_info &objectType = typeid(otherObject);
+    if (objectType == typeid(SpaceShip))
+    {
+        SpaceShip &ss = static_cast<SpaceShip &>(otherObject);
+        //process a SpaceShip - SpaceShip collision;
+    }
+    else if (objectType == typeid(SpaceStation))
+    {
+        SpaceStation &ss = static_cast<SpaceStation &>(otherObject);
+        //process a SpaceShip - SpaceStation collision;
+    }
+    else if (objectType == typeid(Asteroid))
+    {
+        Asteroid &a = static_cast<Asteroid &>(otherObject);
+        //process a SpaceShip - Asteroid collision;
+    }
+    else
+    {
+        throw CollisionWithUnknownObject(otherObject);
+    }
+}
+
+void SpaceStation::collide(GameObject &otherObject)
+{
+    const type_info &objectType = typeid(otherObject);
+    if (objectType == typeid(SpaceShip))
+    {
+        SpaceShip &ss = static_cast<SpaceShip &>(otherObject);
+        //process a SpaceShip - SpaceShip collision;
+    }
+    else if (objectType == typeid(SpaceStation))
+    {
+        SpaceStation &ss = static_cast<SpaceStation &>(otherObject);
+        //process a SpaceShip - SpaceStation collision;
+    }
+    else if (objectType == typeid(Asteroid))
+    {
+        Asteroid &a = static_cast<Asteroid &>(otherObject);
+        //process a SpaceShip - Asteroid collision;
+    }
+    else
+    {
+        throw CollisionWithUnknownObject(otherObject);
+    }
+}
+
+void Asteroid::collide(GameObject &otherObject)
+{
+    const type_info &objectType = typeid(otherObject);
+    if (objectType == typeid(SpaceShip))
+    {
+        SpaceShip &ss = static_cast<SpaceShip &>(otherObject);
+        //process a SpaceShip - SpaceShip collision;
+    }
+    else if (objectType == typeid(SpaceStation))
+    {
+        SpaceStation &ss = static_cast<SpaceStation &>(otherObject);
+        //process a SpaceShip - SpaceStation collision;
+    }
+    else if (objectType == typeid(Asteroid))
+    {
+        Asteroid &a = static_cast<Asteroid &>(otherObject);
+        //process a SpaceShip - Asteroid collision;
+    }
+    else
+    {
+        throw CollisionWithUnknownObject(otherObject);
+    }
+}
+
+class SpaceShip1; // forward declarations
+class SpaceStation1;
+class Asteroid1;
+class GameObject1
+{
+  public:
+    virtual void collide(GameObject1 &otherObject) = 0;
+    virtual void collide(SpaceShip1 &otherObject) = 0;
+    virtual void collide(SpaceStation1 &otherObject) = 0;
+    virtual void collide(Asteroid1 &otherobject) = 0;
+};
+class SpaceShip1 : public GameObject1
+{
+  public:
+    virtual void collide(GameObject1 &otherObject);
+    virtual void collide(SpaceShip1 &otherObject);
+    virtual void collide(SpaceStation1 &otherObject);
+    virtual void collide(Asteroid1 &otherobject);
+};
+
+void SpaceShip1::collide(GameObject1& otherObject)
+{
+  otherObject.collide(*this);
+}
+
+void SpaceShip1::collide(SpaceShip1& otherObject)
+{
+  //process collide with SpaceShip1
+}
+
+void SpaceShip1::collide(SpaceStation1& otherObject)
+{
+  //process collide with SpaceStation1
+}
+
+void SpaceShip1::collide(Asteroid1& otherObject)
+{
+  //process collide with Asteroid1
+}
+
+class GameObject_vtbl
+{
+  public:
+    virtual void collide(GameObject_vtbl& otherObject) = 0;
+};
+
+class CollisionWithUnknownObject_vtbl
+{
+  public:
+    CollisionWithUnknownObject_vtbl(GameObject_vtbl &whatWeHit)
+    {
+
+    }
+};
+
+class SpaceStation_vtbl;
+class Asteroid_vtbl;
+
+class SpaceShip_vtbl : public GameObject_vtbl
+{
+  private:
+    typedef void (SpaceShip_vtbl::*HitFunctionPtr)(GameObject_vtbl &);
+    typedef map<string, HitFunctionPtr> HitMap;
+    static HitMap * initializeCollisionMap();
+  public:
+    void collide(GameObject_vtbl &otherObject);
+    void hitSpaceShip_vtbl(GameObject_vtbl &otherObject);
+    void hitSpaceStation_vtbl(GameObject_vtbl &otherObject);
+    void hitAsteroid_vtbl(GameObject_vtbl &otherObject);
+    static HitFunctionPtr lookup(const GameObject_vtbl &whatWeHit);
+};
+
+void SpaceShip_vtbl::collide(GameObject_vtbl &otherObject)
+{
+  HitFunctionPtr hfp = lookup(otherObject);
+  if(hfp)
+    (this->*hfp)(otherObject);
+  else
+    throw CollisionWithUnknownObject_vtbl(otherObject);
+}
+
+void SpaceShip_vtbl::hitSpaceShip_vtbl(GameObject_vtbl& otherObject)
+{
+    SpaceShip_vtbl& otherShip = dynamic_cast<SpaceShip_vtbl&>(otherObject);
+    //process a SpaceShip-SpaceShip collision;
+}
+
+void SpaceShip_vtbl::hitSpaceStation_vtbl(GameObject_vtbl& otherObject)
+{
+    //SpaceStation_vtbl& otherStation = dynamic_cast<SpaceStation_vtbl&>(otherObject);
+    //process a SpaceShip-SpaceStation collision;
+}
+
+void SpaceShip_vtbl::hitAsteroid_vtbl(GameObject_vtbl& otherObject)
+{
+    //Asteriod_vtbl& otherAsteriod = dynamic_cast<Asteriod_vtbl&>(otherObject);
+    //process a SpaceShip-Asteroid collision;
+}
+
+SpaceShip_vtbl::HitFunctionPtr
+SpaceShip_vtbl::lookup(const GameObject_vtbl &whatWeHit)
+{
+    static shared_ptr<HitMap> collisionMap (initializeCollisionMap());
+    HitMap::iterator mapEntry = (*collisionMap).find(typeid(whatWeHit).name());
+    if (mapEntry == (*collisionMap).end())
+        return 0;
+    return (*mapEntry).second;
+}
+
+SpaceShip_vtbl::HitMap *SpaceShip_vtbl::initializeCollisionMap()
+{
+    HitMap *phm = new HitMap;
+    (*phm)["SpaceShip"] = &hitSpaceShip_vtbl;
+    (*phm)["SpaceStation"] = &hitSpaceStation_vtbl;
+    (*phm)["Asteroid"] = &hitAsteroid_vtbl;
+    return phm;
+}
 
 int main()
 {
