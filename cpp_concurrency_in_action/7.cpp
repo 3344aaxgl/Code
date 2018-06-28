@@ -357,6 +357,125 @@ class lock_free_stack_by_hazardpointer
     }
 };
 
+//使用智能指针的引用计数解决内存泄露问题
+template <typename T>
+class lock_free_stack_by_smartpointer
+{
+  private:
+    struct node
+    {
+        std::shared_ptr<T> data;
+        std::shared_ptr<node> next;
+        node(T const &data_) : data(std::make_shared<T>(data_))
+        {
+        }
+    };
+    std::shared_ptr<node> head;
+
+  public:
+    void push(T const &data)
+    {
+        std::shared_ptr<node> const new_node = std::make_shared<node>(data);
+        new_node->next = head.load();
+        while (!std::atomic_compare_exchange_weak(&head,
+                                                  &new_node->next, new_node))
+            ;
+    }
+    std::shared_ptr<T> pop()
+    {
+        std::shared_ptr<node> old_head = std::atomic_load(&head);
+        while (old_head && !std::atomic_compare_exchange_weak(&head,
+                                                              &old_head, old_head->next))
+            ;
+        return old_head ? old_head->data : std::shared_ptr<T>();
+    }
+};
+
+//使用引用计数解决内存泄露问题
+template <typename T>
+class lock_free_stack_by_referencecount
+{
+  private:
+    struct node;
+    //直接将引用计数存放在节点中
+    struct counted_node_ptr
+    {
+        int external_count;
+        node* ptr;
+    };
+
+    struct node
+    {
+        std::shared_ptr<T> data;
+        std::atomic<int> internal_count;
+        counted_node_ptr next;
+
+        node(T value):data(std::make_shared<T>(value)),internal_count(0)
+        {
+
+        }
+    };
+
+    std::atomic<counted_node_ptr> head;
+
+    //compare_exchange_strong按位去比较调用对象与期望对象
+    //这里保证每个对同一head对象访问都能增加head的外部计数
+    void increase_head_count(counted_node_ptr& old_head)
+    {
+        counted_node_ptr new_head;
+        do
+        {
+            new_head = old_head;
+            ++new_head.external_count;
+        }while(head.compare_exchange_strong(old_head,new_head));
+    }
+
+  public:
+    void push(T value)
+    {
+        node* new_node = new node(value);
+        counted_node_ptr p;
+        p.external_count = 1;
+        p.ptr = new_node;
+        p.ptr->next = head.load();
+        while(head.compare_exchange_weak(p.ptr->next,p));
+    }
+
+    std::shared_ptr<T> pop()
+    {
+        counted_node_ptr old_head = head.load();
+        while(1)
+        {
+            increase_head_count(old_head);
+            node* ptr = old_head.ptr;
+            if(!ptr)
+            {
+                return std::shared_ptr<T>();
+            }
+            //如果删除节点成功，则将这个线程增加的外部引用计数减去，
+            //并减去push时默认的1，剩下的值就是这个节点其他访问这个节点的
+            //线程数。将内部计数加上这个数字，如果加完之后内部计数为0
+            //则说明没有其他线程访问这个节点，可以删除节点空间
+            if(head.compare_exchange_strong(old_head, ptr->next))
+            {
+                std::shared_ptr<T> res;
+                res.swap(ptr->data);
+                int increase_count = old_head.external_count - 2;
+                if(ptr->internal_count.fetch_add(increase_count) == -increase_count)
+                  delete ptr;
+                return res;
+            }
+            //如果失败，说明这个对象在增加引用到现在已经被其他线程pop
+            //所以把内部引用计数减一,如果内部计数为1，说明没有其他
+            //线程在使用这个节点，则可以删除节点空间
+            else if(ptr->internal_count.fetch_sub(1) == 1)
+            {
+                delete ptr;
+            }
+        }
+    }
+};
+
 int main()
 {
     lock_free_stack_by_threadcount<int> lfs;
