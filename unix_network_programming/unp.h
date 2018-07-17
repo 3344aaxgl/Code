@@ -1,30 +1,10 @@
-#include < stdio.h > 
-#include < string.h > 
-
-
-//点分十进制转二进制
-int chartobinary(char * str) {
-    char * p = str; 
-    char * q = p; 
-    int sum = 0; 
-    unsigned int result = 0; 
-    while ( * q != 0) {
-        if ( * q == '.') {
-            if (sum < 0 || sum > 255)
-              return 0; 
-            result = (result << 8) | sum; 
-            sum = 0; 
-        }
-        else if ( * q >= '0' &&  * q <= '9') {
-            //取得
-
-            sum = (sum * 10) +  * q - '0'; 
-        }
-        q++; 
-    }
-    result = (result << 8) | sum; 
-    return result; 
-}
+#include<stdio.h>
+#include<unistd.h>
+#include<stdlib.h>
+#include<string.h>
+#include<errno.h>
+#include<sys/socket.h>
+#include<arpa/inet.h>
 
 char * sock_ntop(const struct sockaddr * sa, socklen_t addrlen) 
 {
@@ -107,7 +87,7 @@ ssize_t writen(int fd, void* vptr, size_t n)
 #define MAXLEN 256
 static int  read_cnt;
 static char *read_ptr;
-static char rad_buf[MAXLEN];
+static char read_buf[MAXLEN];
 
 static ssize_t my_read(int fd, char* ptr)
 {
@@ -126,13 +106,13 @@ static ssize_t my_read(int fd, char* ptr)
         read_ptr = read_buf;
     }
     read_cnt --;
-    *ptr = *read_buf++;
+    *ptr = *read_ptr++;
     return 1;
 }
 
-ssize_t readline(int fd, void* ptr, size_t maxlen)
+ssize_t readline(int fd, void* vptr, size_t maxlen)
 {
-    sszie_t n, rc;
+    ssize_t n, rc;
     char c, *ptr;
 
     ptr = vptr;
@@ -156,18 +136,9 @@ ssize_t readline(int fd, void* ptr, size_t maxlen)
     return n;
 }
 
-sszie_t readlinebuf(void **vptrptr)
+ssize_t readlinebuf(void **vptrptr)
 {
     if(read_cnt)
       *vptrptr = read_ptr;
     return read_cnt;
-}
-
-
-int main() {
-  char * ip = "192.168.77.51"; 
-
-  int result = chartobinary(ip); 
-  printf("%u\n", result); 
-  return 0; 
 }
