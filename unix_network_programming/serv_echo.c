@@ -1,8 +1,5 @@
 #include "unp.h"
 
-#define SERV_PORT 54321
-#define LISTENQ 256
-
 int str_echo(int fd)
 {
     char buf[MAXLEN];

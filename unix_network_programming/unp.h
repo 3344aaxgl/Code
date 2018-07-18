@@ -5,6 +5,13 @@
 #include<errno.h>
 #include<sys/socket.h>
 #include<arpa/inet.h>
+#include<signal.h>
+
+#define SERV_PORT 54321
+
+#define LISTENQ 256
+
+#define MAXLEN 256
 
 char * sock_ntop(const struct sockaddr * sa, socklen_t addrlen) 
 {
@@ -84,7 +91,7 @@ ssize_t writen(int fd, void* vptr, size_t n)
     return n ;
 }
 
-#define MAXLEN 256
+
 static int  read_cnt;
 static char *read_ptr;
 static char read_buf[MAXLEN];
@@ -141,4 +148,27 @@ ssize_t readlinebuf(void **vptrptr)
     if(read_cnt)
       *vptrptr = read_ptr;
     return read_cnt;
+}
+
+typedef void Sigfunc(int);
+
+Sigfunc * signal(int signo, Sigfunc* func)
+{
+    strcut sigaction act,oact;
+    act.sa_handler = func;
+    sigemptyset(&act.sa_mask);
+    if(signo == SIGALARM)
+    {
+        #ifdef SA_INTERRUPT
+          act.sa_flags |= SA_INTERRUPT;
+        #endif
+    }
+    else
+    {
+        #ifdef SA_RESTART
+          act.flags |= SA_RESTART;
+    }
+    if(sigaction(signo, &act, &oact) < 0)
+      return SIG_ERR;
+    return oact.sa_handler;
 }
