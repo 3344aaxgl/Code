@@ -6,7 +6,6 @@
 #include<sys/socket.h>
 #include<arpa/inet.h>
 #include<signal.h>
-#include<sys/wait.h>
 
 #define SERV_PORT 54321
 
@@ -153,12 +152,12 @@ ssize_t readlinebuf(void **vptrptr)
 
 typedef void Sigfunc(int);
 
-Sigfunc * Signal(int signo, Sigfunc* func)
+Sigfunc * signal(int signo, Sigfunc* func)
 {
-    struct sigaction act,oact;
+    strcut sigaction act,oact;
     act.sa_handler = func;
     sigemptyset(&act.sa_mask);
-    if(signo == SIGALRM)
+    if(signo == SIGALARM)
     {
         #ifdef SA_INTERRUPT
           act.sa_flags |= SA_INTERRUPT;
@@ -172,28 +171,4 @@ Sigfunc * Signal(int signo, Sigfunc* func)
     if(sigaction(signo, &act, &oact) < 0)
       return SIG_ERR;
     return oact.sa_handler;
-}
-
-void str_cli(FILE* fp, int sock_fd)
-{
-    char sendline[256], recvline[256];
-    while(fgets(sendline, MAXLEN, fp) !=NULL)
-    {
-        writen(sock_fd, sendline, strlen(sendline));
-        if(readline(sock_fd, recvline, MAXLEN) == 0)
-        {
-            perror("str_cli:server terminated prematurely");
-        }
-        fputs(recvline, stdout);
-    }
-}
-
-void sig_chld(int signo)
-{
-    pid_t pid;
-    int stat;
-
-    while((pid = waitpid(-1, &stat, WNOHANG)) > 0);
-    printf("child %d terminated\n", pid);
-    return ;
 }

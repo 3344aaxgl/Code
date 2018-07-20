@@ -40,7 +40,7 @@ int main(int argc, char*argv[])
 
     bind(serv_fd, (const struct sockaddr*) &serv_sockaddr, sizeof(serv_sockaddr));
     listen(serv_fd, LISTENQ);
-    Signal(SIGCHLD, sig_chld);
+
     for(;;)
     {
         //阻塞与accept，等待连接到来
