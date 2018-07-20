@@ -1,19 +1,5 @@
 #include "unp.h"
 
-void str_cli(FILE* fp, int sock_fd)
-{
-    char sendline[256], recvline[256];
-    while(fgets(sendline, MAXLEN, fp) !=NULL)
-    {
-        writen(sock_fd, sendline, strlen(sendline));
-        if(readline(sock_fd, recvline, MAXLEN) == 0)
-        {
-            perror("str_cli:server terminated prematurely");
-        }
-        fputs(recvline, stdout);
-    }
-}
-
 int main(int argc, char* argv[])
 {
     int sock_fd;
@@ -28,6 +14,4 @@ int main(int argc, char* argv[])
 
     str_cli(stdin, sock_fd);
     exit(0);
-
-    return 0;
 }
