@@ -7,6 +7,8 @@
 #include<arpa/inet.h>
 #include<signal.h>
 #include<sys/wait.h>
+#include<select.h>
+#include<sys/time.h>
 
 #define SERV_PORT 54321
 
